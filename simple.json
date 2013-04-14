@@ -1,0 +1,36 @@
+{
+    "result": [
+        {
+            "entrydate_0": "2012.01",
+            "customer_1": "",
+            "projectid_2": "A",
+            "duration_3": 3
+        },
+        {
+            "entrydate_0": "2012.02",
+            "customer_1": "",
+            "projectid_2": "A",
+            "duration_3": 2
+        },
+        {
+            "entrydate_0": "2012.03",
+            "customer_1": "",
+            "projectid_2": "A",
+            "duration_3": 1
+        },
+        {
+            "entrydate_0": "2012.02",
+            "customer_1": "",
+            "projectid_2": "B",
+            "duration_3": 2
+        },
+        {
+            "entrydate_0": "2012.05",
+            "customer_1": "",
+            "projectid_2": "B",
+            "duration_3": 3
+        }
+    ],
+    "status": "OK",
+    "totalRecords": 3801
+}

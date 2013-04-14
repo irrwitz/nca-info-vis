@@ -2,34 +2,193 @@
 <meta charset="utf-8">
 
 <style>
-    .chart div {
+
+    body {
         font: 10px sans-serif;
-        background-color: steelblue;
-        text-align: right;
-        padding: 3px;
-        margin: 1px;
-        color: white;
+        background-color: black;
     }
+
+    .active {
+        stroke-width: 2;
+        stroke: #fff;
+    }
+
+    .path text {
+        text-anchor: end;
+        display: white;
+    }
+
 </style>
 
 <body>
-<script src="d3.min.js"></script>
+<script src="d3.v3.js"></script>
+<script src="moment.js"></script>
+<script src="underscore.js"></script>
 
 <script type="text/javascript">
-    d3.json( "titrakked_hours_per_project_and_day.json", function(data) { draw(data)} );
+    d3.json("titrakked_hours_per_project_and_week_medium2.json", function (data) {
+        draw(data)
+    });
+    function preprocessData(result) {
+        _.each(result, function (d) {
+            d.date = parseDate(d.entrydate_0);
 
-    function draw(data) {
-        var chart = d3.select("body").append("div")
-                .attr("class", "chart");
-        chart.selectAll("div")
-                .data(data.result)
-                .enter().append("div")
-                .style("width", function(d) {
-                    return  d.duration_3 + "px";
-                })
-                .text(function(d) { return d.projectid_2; });
+        });
     }
 
+    function parseDate(d) {
+        var dateArray = d.split(".");
+        return moment().year(dateArray[0]).isoWeek(dateArray[1]).day(0).hour(0).minute(0).second(0).milliseconds(0).toDate();
+    }
+
+    function fillInEmptyValues(uniqueDates, projectData) {
+
+        _.each(uniqueDates, function (day) {
+
+            var existingEntry = _.find(projectData, function (d) {
+                return d.entrydate_0 === day;
+            });
+            if (!existingEntry) {
+                var projectId = _.first(projectData).projectid_2;
+                projectData.push(
+                        {
+                            "date": parseDate(day),
+                            "entrydate_0": day,
+                            "customer_1": projectId.substring(0, 3),
+                            "projectid_2": projectId,
+                            "duration_3": 0
+                        });
+            }
+        })
+        projectData.sort(function (a, b) {
+            return moment(a.date).diff(moment(b.date));
+        });
+    }
+    function draw(response) {
+
+        var data = response.result;
+        preprocessData(data);
+
+        var minDate = d3.min(data, function (d) {
+            return d.date
+        });
+        var maxDate = d3.max(data, function (d) {
+            return d.date
+        });
+
+        var uniqueDates = {};
+        data.forEach(function (d) {
+            uniqueDates[d.entrydate_0] = d.entrydate_0;
+        });
+
+
+        var groupedData = d3.nest()
+                .key(function (d) {
+                    return d.projectid_2;
+                })
+                .map(data, d3.map);
+        var groupedDataEntried = groupedData.entries().sort(function (a, b) {
+            return d3.ascending(a.key, b.key)
+        });
+        var data = groupedData.values();
+        data.forEach(function (project) {
+            fillInEmptyValues(uniqueDates, project);
+
+        });
+
+
+        var color = d3.scale.category10();
+
+        stack = d3.layout.stack()
+                .x(function (d) {
+                    return d.date;
+                })
+                .y(function (d) {
+                    return d.duration_3;
+                });
+
+        var width = 960,
+                height = 500;
+
+        var x = d3.time.scale()
+                .domain([minDate, maxDate])
+                .range([0, width]);
+
+        var layers = stack(data);
+
+        var y = d3.scale.linear()
+                .domain([0, d3.max(layers, function (layer) {
+                    return d3.max(layer, function (d) {
+                        return d.y0 + d.y;
+                    });
+                })])
+                .range([height, 0]);
+
+        var svg = d3.select("body").append("svg")
+                .attr("width", width)
+                .attr("height", height);
+
+
+        var area = d3.svg.area()
+                .x(function (d) {
+                    return x(d.date);
+                })
+                .y0(function (d) {
+                    return y(d.y0);
+                })
+                .y1(function (d) {
+                    return y(d.y0 + d.y);
+                });
+
+        var text = svg.append("text")
+                .attr("x", 20)
+                .attr("y", 15)
+                .text('<click area to select project>')
+                .attr("font-family", "sans-serif")
+                .attr("font-size", "20px")
+                .attr("fill", "white");
+
+        svg.append("g").attr("class", "axis").attr("transform", "translate(0," + height + ")").call(x);
+
+        var path = svg.selectAll("path")
+                .data(layers)
+                .enter().append("path")
+                .attr("d", area)
+                .style("fill",function (d) {
+                    var customer = _.first(d).customer_1;
+                    return color(customer);
+                }).on("click", function (selected) {
+
+                    var selectedProject = _.first(selected).projectid_2;
+                    var selectedElement = _.find(groupedDataEntried, function (d) {
+                        return d.key === selectedProject
+                    });
+
+                    var index = 0;
+                    groupedDataEntried = _.without(groupedDataEntried, selectedElement);
+                    groupedDataEntried.splice(index, 0, selectedElement);
+
+                    var layers = stack(_.map(groupedDataEntried, function (d) {
+                        return d.value
+                    }));
+
+                    d3.selectAll("path")
+                            .data(layers)
+                            .transition()
+                            .style("fill",function (d) {
+                                var customer = _.first(d).customer_1;
+                                return color(customer);
+                            })
+                            .duration(2500)
+                            .attr("d", area);
+
+                    d3.selectAll("path").classed("active", function (d) {
+                        return selectedProject === _.first(d).projectid_2;
+                    });
+
+                    d3.select("text").text(selectedProject);
+                });
+    }
 
 </script>
 
