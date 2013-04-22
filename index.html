@@ -27,13 +27,13 @@ div.tooltip {
   border-radius: 4px;
   pointer-events: none;
 }
-
 </style>
 
 <body>
 <script src="d3.js"></script>
 <script type="text/javascript">
-    
+    // global variables d3
+
     d3.json("titrakked_hours_per_project_and_day.json",
 	    function(data) {
 		draw(data.result);
@@ -55,9 +55,6 @@ div.tooltip {
 		.attr("class", "tooltip")
 		.style("opacity", 1e-6);
 
-	var dataByCustomer = d3.nest().key(function(d) {
-	    return d.customer_1; }).entries(data, d3.map);
-
 	// data is now
 	// key e.g. "2012.01"
 	// values e.g. [{ "key": "CSS", values : [ { customer_1: "CSS", duration_3 : 33  } ]}]
@@ -73,6 +70,10 @@ div.tooltip {
 	var yAxis = d3.svg.axis()
 		.scale(y)
 		.orient("left");
+
+
+	var dataByCustomer = d3.nest().key(function(d) {
+	    return d.customer_1; }).entries(data, d3.map);
 
 	var customers = dataByCustomer.map(function(d) { return d.key; });
 	var color = d3.scale.category20c().domain(customers);
@@ -90,8 +91,9 @@ div.tooltip {
 	});
 
 
-	// domain keys are the dates
+	// x axis domain keys are the dates
 	x.domain(data.map(function(d) { return d.key; }));
+	// y axis domain is from 0 to the week which has the most titrakked hours
 	y.domain([0, d3.max(data, function(d) { return d.sum; })]);
 
 	var svg = d3.select("body").append("svg")
@@ -109,7 +111,7 @@ div.tooltip {
 	svg.append("g")
 	    .attr("class", "y axis")
 	    .call(yAxis);
-	
+
 	// prepares the g container where the rectangles should go
 	var week = svg.selectAll('week')
 		.data(data)
@@ -140,8 +142,6 @@ div.tooltip {
 			.duration(500)
 			.style("opacity", 0);
 		});
-
-
   };
 
 </script>
